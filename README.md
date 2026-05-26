@@ -17,7 +17,6 @@ gen-derive is generic. It has no knowledge of NixOS, aspects, policies, or syste
 - [API Reference](#api-reference)
 - [Testing](#testing)
 - [Theoretical Foundations](#theoretical-foundations)
-- [License](#license)
 
 ## Core Insight
 
@@ -279,7 +278,3 @@ Requires nix-unit. 55 tests across 11 suites.
 | Hedin & Magnusson (2003) "JastAdd" | Informed by | Open action types with framework-owned dispatch; aspect-oriented modular attribution |
 | Batory (2005) "AHEAD" | Informed by | Feature composition model inspires `restrict`/`override`/`chain` rule combinators |
 | Berry & Boudol (1990) "Chemical Abstract Machine" | Informed by | Rules as reactions producing transformations; multiset rewriting as dispatch metaphor |
-
-## License
-
-MIT
