@@ -258,7 +258,7 @@ derive.adapters.select.selectorSpecificity selector  # -> int
 ## Testing
 
 ```bash
-cd templates/ci
+cd ci
 just ci                    # run all 55 tests
 just ci dispatch-basic     # run one suite
 just ci fixpoint.test-converge-two-iterations  # specific test
