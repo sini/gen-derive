@@ -2,13 +2,26 @@
 
 Stratified rule dispatch engine with fixpoint convergence, implemented as a pure Nix library.
 
-gen-derive is a **production rule system** (Forgy, 1982) with **stratified phases** (Arntzenius & Krishnaswami, 2016) and **algebraic graph rewriting** vocabulary (Ehrig et al., 2006). Given rules (condition + action producer), a position, and a context, gen-derive answers: "which rules fire here, and what actions do they produce?" It owns dispatch, phase ordering, fixpoint convergence, conflict resolution, and rule dedup. Actions are opaque — the vocabulary belongs to the consumer.
+gen-derive is a **production rule system** (Forgy, 1982) with **stratified phases** (Arntzenius & Krishnaswami, 2016) and **algebraic graph rewriting** vocabulary (Ehrig et al., 2006). Given rules (condition + action producer), a position, and a context, gen-derive answers: "which rules fire here, and what actions do they produce?" It owns dispatch, phase ordering, fixpoint convergence, conflict resolution, and rule dedup. Actions are opaque -- the vocabulary belongs to the consumer.
 
 gen-derive is generic. It has no knowledge of NixOS, aspects, policies, or system configuration. It provides dispatch machinery; consumers define what to compute.
 
+## Table of Contents
+
+- [Core Insight](#core-insight)
+- [Terminology](#terminology)
+- [Gen Ecosystem](#gen-ecosystem)
+- [Usage](#usage)
+- [Example](#example)
+- [Two-Tier Architecture](#two-tier-architecture)
+- [API Reference](#api-reference)
+- [Testing](#testing)
+- [Theoretical Foundations](#theoretical-foundations)
+- [License](#license)
+
 ## Core Insight
 
-The hard part of rule dispatch is the convergence loop: dispatch rules, extract feedback, widen context, re-dispatch until stable. Hand-rolling this loop caused PRs 408-437 in den (all context-threading regressions). gen-derive extracts the generic protocol — rules declare what they need, gen-derive handles when and how they fire.
+The hard part of rule dispatch is the convergence loop: dispatch rules, extract feedback, widen context, re-dispatch until stable. Hand-rolling this loop caused PRs 408-437 in den (all context-threading regressions). gen-derive extracts the generic protocol -- rules declare what they need, gen-derive handles when and how they fire.
 
 ## Terminology
 
@@ -20,7 +33,7 @@ The hard part of rule dispatch is the convergence loop: dispatch rules, extract 
 | Phase | Named dispatch group with DAG ordering | Arntzenius 2016 (stratification) |
 | Match | Testing a condition against a position | Ehrig 2006 (match morphism) |
 | Fixpoint | Convergent dispatch loop with monotone feedback | Arntzenius 2016; Radul 2009 |
-| NAC | Negative application condition — pattern that must NOT match | Ehrig 2006 |
+| NAC | Negative application condition -- pattern that must NOT match | Ehrig 2006 |
 
 ## Gen Ecosystem
 
@@ -60,7 +73,7 @@ Policy-like rules that enrich context and produce typed actions across stratifie
 let
   derive = import ./gen-derive { inherit lib; gen-algebra = import ./gen-algebra {}; };
 
-  # Define action vocabulary — gen-derive classifies but doesn't interpret
+  # Define action vocabulary -- gen-derive classifies but doesn't interpret
   fx = derive.mkActions {
     structural = [ "spawn" "enrich" ];
     resolution = [ "edge" ];
@@ -107,8 +120,8 @@ in {
 
 gen-derive follows gen-algebra's pure/lib two-tier model:
 
-- **Core tier** — depends on gen-algebra pure tier only. Conditions are opaque; caller provides `match : condition -> id -> ctx -> bool`.
-- **Adapter tier** — imports gen-select. Bridges gen-select selectors into gen-derive conditions with `mkMatch` and `selectorSpecificity`.
+- **Core tier** -- depends on gen-algebra pure tier only. Conditions are opaque; caller provides `match : condition -> id -> ctx -> bool`.
+- **Adapter tier** -- imports gen-select. Bridges gen-select selectors into gen-derive conditions with `mkMatch` and `selectorSpecificity`.
 
 Consumers without gen-select can use gen-derive with custom match functions. Consumers with gen-select get selector pattern matching and CSS-like specificity for conflict resolution.
 
@@ -127,12 +140,12 @@ dispatch {
   exclusive ? false;  # only highest-priority group fires
   fired ? {};         # pre-seeded fired identity set
 }
-→ { actions; fired; }
+-> { actions; fired; }
 ```
 
 One-shot dispatch. Fires all matching rules, groups actions by phase in topological order. Validates single-phase-per-rule constraint.
 
-**Dispatch sequence:** NAC check → condition match → override suppression (from matched rules only) → priority sort → exclusive filter → fire → classify → group.
+**Dispatch sequence:** NAC check -> condition match -> override suppression (from matched rules only) -> priority sort -> exclusive filter -> fire -> classify -> group.
 
 ### `fixpoint`
 
@@ -146,23 +159,23 @@ fixpoint {
   exclusive ? false;
   maxIter ? 100;
 }
-→ { actions; context; iterations; fired; }
+-> { actions; context; iterations; fired; }
 ```
 
-Convergent dispatch loop. Calls `dispatch` iteratively — each iteration extracts feedback from actions, widens context, checks stability. Identified rules fire at most once across iterations (dedup via `fired` set). Anonymous rules re-fire each iteration.
+Convergent dispatch loop. Calls `dispatch` iteratively -- each iteration extracts feedback from actions, widens context, checks stability. Identified rules fire at most once across iterations (dedup via `fired` set). Anonymous rules re-fire each iteration.
 
 ### `mkRule`
 
 ```nix
 mkRule {
-  condition;            # opaque — interpreted by match function
+  condition;            # opaque -- interpreted by match function
   produce;              # id -> ctx -> [ action ]
   nac ? null;           # negative application condition
   identity ? null;      # string for dedup, or null (anonymous)
   priority ? 0;         # higher fires first
   overrides ? [];       # identities of rules this one replaces
 }
-→ rule
+-> rule
 ```
 
 ### `fromFunction`
@@ -171,10 +184,10 @@ mkRule {
 fromFunction : fn -> rule
 ```
 
-Converts a Nix function into a rule using `builtins.functionArgs` as the condition. Detects `mkIntensional`-wrapped functions (Palmer 2024) via three-field check and extracts identity automatically.
+Converts a Nix function into a rule using `builtins.functionArgs` as the condition. Detects `mkIntensional`-wrapped functions (Palmer 2024) via three-field check (`name`, `__functor`, `closure`) and extracts identity automatically.
 
 ```nix
-# { host, ... } is the condition — required arg "host" must be in context
+# { host, ... } is the condition -- required arg "host" must be in context
 derive.fromFunction ({ host, ... }: [ (fx.spawn { kind = "user"; }) ])
 
 # mkIntensional wrapping adds dedup identity
@@ -187,16 +200,16 @@ derive.fromFunction (mkIntensional "host-init" {} ({ host, ... }: [ ... ]))
 fromFunctionMatch : condition -> id -> ctx -> bool
 ```
 
-Default `match` implementation for `fromFunction` rules. Checks that all required args (non-optional in `functionArgs`) are present in context.
+Default `match` implementation for `fromFunction` rules. Checks that all required args (non-optional in `functionArgs`) are present in context. Handles `__restricted` conditions from `restrict` by recursively matching both original and extra conditions.
 
 ### `mkActions`
 
 ```nix
 mkActions { phaseName = [ "tag" ... ]; ... }
-→ { tag = args: { __action = "tag"; } // args; ...; classify = action -> phaseName; }
+-> { tag = args: { __action = "tag"; } // args; ...; classify = action -> phaseName; }
 ```
 
-Generates tagged action constructors and a `classify` function from a phase declaration. Optional — complex consumers write their own constructors.
+Generates tagged action constructors and a `classify` function from a phase declaration. Optional -- complex consumers write their own constructors.
 
 ### Conflict Resolution
 
@@ -208,7 +221,7 @@ Three strategies, applied in order:
 | Priority | Core | Numeric `priority` (higher first), `exclusive` mode |
 | Specificity | Adapter | Selector constraint term count via `selectorSpecificity` |
 
-**Resolution order:** override suppression → priority sort → specificity (adapter) → ties fire additively.
+**Resolution order:** override suppression -> priority sort -> specificity (adapter) -> ties fire additively.
 
 ### Rule Composition
 
@@ -230,7 +243,7 @@ derive.entryAnywhere {}                    # no ordering constraints
 derive.entryAfter [ "structural" ] {}      # fires after named phases
 derive.entryBefore [ "collection" ] {}     # fires before named phases
 derive.entryBetween [ "c" ] [ "a" ] {}     # between two sets
-derive.topoSort phases                     # → { result = [ { name; data; } ... ]; }
+derive.topoSort phases                     # -> { result = [ { name; data; } ... ]; }
 ```
 
 ### Adapter: gen-select Bridge
@@ -240,7 +253,7 @@ derive.topoSort phases                     # → { result = [ { name; data; } ..
 match = derive.adapters.select.mkMatch selectLib;
 
 # CSS-like specificity counting for conflict resolution
-derive.adapters.select.selectorSpecificity selector  # → int
+derive.adapters.select.selectorSpecificity selector  # -> int
 ```
 
 ## Testing
@@ -256,16 +269,16 @@ Requires nix-unit. 55 tests across 11 suites.
 
 ## Theoretical Foundations
 
-| Paper | Used for |
-|-------|----------|
-| Forgy (1982) "RETE" | Rule = condition + action; production rule dispatch |
-| Ehrig et al. (2006) "Fundamentals of Algebraic Graph Transformation" | Graph rewriting rules, negative application conditions |
-| Arntzenius & Krishnaswami (2016) "Datafun" | Stratified phases, monotonic fixpoint |
-| Palmer et al. (2024) "Intensional Functions" | Rule identity and dedup via program-point identity |
-| Radul & Sussman (2009) "Art of the Propagator" | Monotonic convergence (quiescence) |
-| Hedin & Magnusson (2003) "JastAdd" | Open action types with framework-owned dispatch |
-| Batory (2005) "AHEAD" | Rule composition (restrict/override/chain as feature refinement) |
-| Berry & Boudol (1990) "Chemical Abstract Machine" | Rules as reactions producing transformations |
+| Paper | Relationship | Used for |
+|-------|-------------|----------|
+| Forgy (1982) "RETE" | Implements | Condition-action rule dispatch; rule = condition + action production system |
+| Ehrig et al. (2006) "Fundamentals of Algebraic Graph Transformation" | Implements | Graph rewriting rules, negative application conditions as first-class `nac` field |
+| Arntzenius & Krishnaswami (2016) "Datafun" | Implements | Stratified phases with DAG ordering, monotonic fixpoint with convergence check |
+| Palmer et al. (2024) "Intensional Functions" | Implements | Rule identity via `mkIntensional` detection (three-field check: `name`, `__functor`, `closure`), dedup |
+| Radul & Sussman (2009) "Art of the Propagator" | Informed by | Monotonic convergence model; quiescence as stability criterion for fixpoint loop |
+| Hedin & Magnusson (2003) "JastAdd" | Informed by | Open action types with framework-owned dispatch; aspect-oriented modular attribution |
+| Batory (2005) "AHEAD" | Informed by | Feature composition model inspires `restrict`/`override`/`chain` rule combinators |
+| Berry & Boudol (1990) "Chemical Abstract Machine" | Informed by | Rules as reactions producing transformations; multiset rewriting as dispatch metaphor |
 
 ## License
 
