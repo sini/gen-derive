@@ -8,7 +8,7 @@ let
     ;
 in
 {
-  dag = {
+  flake.tests.dag = {
     test-entry-anywhere-shape = {
       expr = entryAnywhere { };
       expected = {

@@ -19,7 +19,7 @@ let
   };
 in
 {
-  dispatch-phases = {
+  flake.tests.dispatch-phases = {
     test-actions-grouped-by-phase = {
       expr =
         let

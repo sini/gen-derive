@@ -19,7 +19,7 @@ let
   };
 in
 {
-  conflict = {
+  flake.tests.conflict = {
     test-priority-ordering = {
       expr =
         let

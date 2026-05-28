@@ -34,7 +34,7 @@ let
   eq = a: b: builtins.attrNames a == builtins.attrNames b;
 in
 {
-  fixpoint = {
+  flake.tests.fixpoint = {
     test-converge-one-iteration = {
       expr =
         let

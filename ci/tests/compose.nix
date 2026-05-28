@@ -13,7 +13,7 @@ let
     ;
 in
 {
-  compose = {
+  flake.tests.compose = {
     test-restrict-shape = {
       expr =
         let

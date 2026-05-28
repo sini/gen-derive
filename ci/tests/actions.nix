@@ -12,7 +12,7 @@ let
   };
 in
 {
-  actions = {
+  flake.tests.actions = {
     test-constructor-shape = {
       expr = fx.spawn { nodeId = "test"; };
       expected = {

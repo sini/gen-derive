@@ -20,7 +20,7 @@ let
   };
 in
 {
-  dispatch-basic = {
+  flake.tests.dispatch-basic = {
     test-single-rule-fires = {
       expr =
         let

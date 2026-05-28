@@ -28,7 +28,7 @@ let
   };
 in
 {
-  adapter-select = {
+  flake.tests.adapter-select = {
     test-match-attrs = {
       expr = match (sel.attrs { type = "host"; }) "host:web" mockCtx;
       expected = true;

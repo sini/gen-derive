@@ -21,7 +21,7 @@ let
   adapter = deriveLib.adapters.select;
 in
 {
-  integration = {
+  flake.tests.integration = {
     # Den-like scenario: 3 phases, enrichment convergence, override
     test-den-like-scenario = {
       expr =

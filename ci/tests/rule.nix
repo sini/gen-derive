@@ -9,7 +9,7 @@ let
   mkI = genAlgebra.mkIntensional;
 in
 {
-  rule = {
+  flake.tests.rule = {
     test-mkrule-defaults = {
       expr =
         let

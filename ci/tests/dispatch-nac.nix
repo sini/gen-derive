@@ -14,7 +14,7 @@ let
   };
 in
 {
-  dispatch-nac = {
+  flake.tests.dispatch-nac = {
     test-nac-suppresses-rule = {
       expr =
         let
