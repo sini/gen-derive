@@ -40,6 +40,7 @@ let
         if eq ctx newCtx then
           {
             actions = mergedActions;
+            inherit (result) orderedPhases;
             context = newCtx;
             iterations = iteration;
             fired = result.fired;
