@@ -1,15 +1,15 @@
 { lib }:
 let
   mkMatch =
-    selectLib: condition: id: ctx:
+    genSelect: condition: id: ctx:
     if condition ? __restricted then
       let
-        origMatch = selectLib.matches condition.original id ctx;
-        extraMatch = selectLib.matches condition.extra id ctx;
+        origMatch = genSelect.matches condition.original id ctx;
+        extraMatch = genSelect.matches condition.extra id ctx;
       in
       origMatch && extraMatch
     else
-      selectLib.matches condition id ctx;
+      genSelect.matches condition id ctx;
 
   selectorSpecificity =
     selector:
