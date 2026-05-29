@@ -251,7 +251,7 @@ derive.topoSort phases                     # -> { result = [ { name; data; } ...
 
 ```nix
 # Bridge gen-select selectors as gen-derive conditions
-match = derive.adapters.select.mkMatch selectLib;
+match = derive.adapters.select.mkMatch genSelect;
 
 # CSS-like specificity counting for conflict resolution
 derive.adapters.select.selectorSpecificity selector  # -> int
