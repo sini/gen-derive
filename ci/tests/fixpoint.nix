@@ -12,6 +12,7 @@ let
     mkRule
     mkActions
     entryAnywhere
+    entryAfter
     ;
   mkI = genAlgebra.mkIntensional;
   fx = mkActions {
@@ -208,6 +209,60 @@ in
         in
         builtins.length (r.actions.default or [ ]);
       expected = 3; # iter1: enrich + act; iter2: act
+    };
+
+    test-stratified-single-pass = {
+      expr =
+        let
+          fx = mkActions {
+            structural = [ "spawn" ];
+            resolution = [ "edge" ];
+          };
+          rules = [
+            (mkRule {
+              condition = {
+                host = false;
+              };
+              phase = "structural";
+              produce = _: _: [ (fx.spawn { }) ];
+              identity = "s";
+            })
+            (mkRule {
+              condition = {
+                flag = false;
+              };
+              phase = "resolution";
+              produce = _: _: [ (fx.edge { }) ];
+              identity = "e";
+            })
+          ];
+          r = fixpoint {
+            inherit rules;
+            context = {
+              host = { };
+            };
+            match = fromFunctionMatch;
+            classify = fx.classify;
+            phases = {
+              structural = entryAnywhere { };
+              resolution = entryAfter [ "structural" ] { };
+            };
+            extract = actions: if (actions.structural or [ ]) != [ ] then { flag = true; } else { };
+            combine = ctx: ext: ctx // ext;
+            eq = a: b: builtins.attrNames a == builtins.attrNames b;
+          };
+        in
+        {
+          iters = r.iterations;
+          edges = builtins.length (r.actions.resolution or [ ]);
+        };
+      # The edge fires WITHIN pass 1 (stratified threading). iterations is 2 because
+      # fixpoint's `eq` compares pre- vs post-threading context: pass 1 changes the
+      # context, so a second pass confirms convergence.
+      expected = {
+        iters = 2;
+        edges = 1;
+      };
     };
   };
 }

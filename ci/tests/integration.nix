@@ -49,6 +49,7 @@ in
                 (fx.spawn { kind = "user"; })
               ];
               identity = "host-init";
+              phase = "structural";
             })
             # Resolution: fires after enrichment adds isNixos
             (mkRule {
@@ -58,6 +59,7 @@ in
               };
               produce = _id: _ctx: [ (fx.edge { target = "logging"; }) ];
               identity = "nixos-edges";
+              phase = "resolution";
             })
             # Collection: fires when host is present
             (mkRule {
@@ -66,6 +68,7 @@ in
               };
               produce = _id: _ctx: [ (fx.gather { scope = "all"; }) ];
               identity = "collect-all";
+              phase = "collection";
             })
           ];
 
