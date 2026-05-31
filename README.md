@@ -140,13 +140,15 @@ dispatch {
   phases;             # DAG of phase entries
   exclusive ? false;  # only highest-priority group fires
   fired ? {};         # pre-seeded fired identity set
+  extract ? (_: {});       # { phase = [action]; } -> ctx delta (per-phase threading; default no-op)
+  combine ? (ctx: _: ctx); # ctx -> delta -> ctx (default identity = no threading)
 }
--> { actions; fired; }
+-> { actions; orderedPhases; context; fired; }
 ```
 
 One-shot dispatch. Fires all matching rules in topological phase order — lower phases complete before higher phases begin, with context threaded between phases. Validates single-phase-per-rule constraint.
 
-**Dispatch sequence:** NAC check -> condition match -> override suppression (from matched rules only) -> priority sort -> exclusive filter -> fire -> classify -> group.
+**Dispatch sequence:** walk `topoSort(phases)`; per phase — select this phase's rules (an unphased rule under multi-phase dispatch throws) -> NAC + condition match against the threaded context -> forward-accumulating override suppression (carries to later phases) -> priority sort -> exclusive filter -> fire -> classify-validate (single-phase-per-rule + declared-phase consistency) -> group -> thread context (`combine`/`extract`) into the next phase.
 
 ### `fixpoint`
 
@@ -160,10 +162,10 @@ fixpoint {
   exclusive ? false;
   maxIter ? 100;
 }
--> { actions; context; iterations; fired; }
+-> { actions; orderedPhases; context; iterations; fired; }
 ```
 
-Convergent dispatch loop. Calls `dispatch` iteratively -- each iteration extracts feedback from actions, widens context, checks stability. Identified rules fire at most once across iterations (dedup via `fired` set). Anonymous rules re-fire each iteration.
+Convergent dispatch loop. Intra-pass phase threading lives in `dispatch` (passed `extract`/`combine`); `fixpoint` runs stratified passes and converges when the threaded context stabilizes (`eq ctx dispatch.context`), accumulating actions in `orderedPhases` order. Identified rules fire at most once across iterations (dedup via `fired` set); anonymous rules re-fire each iteration.
 
 ### `mkRule`
 
@@ -175,6 +177,7 @@ mkRule {
   identity ? null;      # string for dedup, or null (anonymous)
   priority ? 0;         # higher fires first
   overrides ? [];       # identities of rules this one replaces
+  phase ? null;         # phase name for stratified dispatch, or null (single-phase)
 }
 -> rule
 ```
