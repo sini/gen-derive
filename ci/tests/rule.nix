@@ -176,5 +176,30 @@ in
         }).group;
       expected = null;
     };
+
+    test-mkRule-produces = {
+      expr =
+        (mkRule {
+          condition = { };
+          produce = _: _: [ ];
+          produces = [
+            "edge"
+            "drop"
+          ];
+        }).produces;
+      expected = [
+        "edge"
+        "drop"
+      ];
+    };
+
+    test-mkRule-produces-default-null = {
+      expr =
+        (mkRule {
+          condition = { };
+          produce = _: _: [ ];
+        }).produces;
+      expected = null;
+    };
   };
 }

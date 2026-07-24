@@ -92,19 +92,30 @@ let
           results = map (r: {
             inherit (r) identity;
             actions = r.produce id acc.ctx;
+            # A rule that DECLARES its produced-kind family (`produces`) had its stratum discharged
+            # at DEFINITION time (`deriveGroup` classified the declared kinds); dispatch HONORS that
+            # declaration and skips the fire-and-classify inference below. `or null` keeps rules that
+            # predate the field (e.g. `chain` results) on the classify path — byte-identical.
+            declared = (r.produces or null) != null;
           }) filtered;
 
           validated = map (
             res:
-            let
-              actionGroups = unique (map classify res.actions);
-            in
-            if builtins.length actionGroups > 1 then
-              throw "gen-dispatch: rule \"${ruleName res}\" produced actions in multiple groups: ${builtins.concatStringsSep ", " actionGroups}"
-            else if multiGroup && res.actions != [ ] && builtins.head actionGroups != groupName then
-              throw "gen-dispatch: rule \"${ruleName res}\" declared group \"${groupName}\" but produced \"${builtins.head actionGroups}\" actions"
-            else
+            # Declared rules are trusted: their stratum is the declaration, not the classify of the
+            # fired actions (mirrors gen-resolve trusting an equation's `stratum`). Undeclared rules
+            # keep the classify-validation exactly as before — byte-identical when nothing declares.
+            if res.declared then
               res
+            else
+              let
+                actionGroups = unique (map classify res.actions);
+              in
+              if builtins.length actionGroups > 1 then
+                throw "gen-dispatch: rule \"${ruleName res}\" produced actions in multiple groups: ${builtins.concatStringsSep ", " actionGroups}"
+              else if multiGroup && res.actions != [ ] && builtins.head actionGroups != groupName then
+                throw "gen-dispatch: rule \"${ruleName res}\" declared group \"${groupName}\" but produced \"${builtins.head actionGroups}\" actions"
+              else
+                res
           ) results;
 
           groupActions = builtins.concatLists (map (r: r.actions) validated);

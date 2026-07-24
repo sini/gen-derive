@@ -106,7 +106,7 @@ Consumers without gen-select can use gen-dispatch with custom match functions. C
 
 ## API Reference
 
-The full exported surface is `{ dispatch, mkRule, fromFunction, fromFunctionMatch, mkActions, restrict, override, chain, adapters }`, where `adapters = { select = { mkMatch, selectorSpecificity }; }`.
+The full exported surface is `{ dispatch, mkRule, fromFunction, fromFunctionMatch, mkActions, restrict, override, chain, groupOf, producesOf, deriveGroup, adapters }`, where `adapters = { select = { mkMatch, selectorSpecificity }; }`.
 
 ### `dispatch`
 
@@ -156,7 +156,8 @@ mkRule {
   identity ? null;      # string for dedup, or null (anonymous)
   priority ? 0;         # higher fires first
   overrides ? [];       # identities of rules this one replaces
-  group ? null;         # group name for stratified dispatch, or null (single-group)
+  group ? null;         # group name (stratum) for stratified dispatch, or null (single-group)
+  produces ? null;      # declared produced-kind family [ tag ], or null (undeclared) -- see Declared Stratum
 }
 -> rule
 ```
@@ -189,10 +190,41 @@ Default `match` implementation for `fromFunction` rules. Checks that all require
 
 ```nix
 mkActions { groupName = [ "tag" ... ]; ... }
--> { tag = args: { __action = "tag"; } // args; ...; classify = action -> groupName; }
+-> { tag = args: { __action = "tag"; } // args; ...; classify = action -> groupName; groupOfKind = tag -> groupName; }
 ```
 
-Generates tagged action constructors and a `classify` function from a group declaration. Optional — complex consumers write their own constructors.
+Generates tagged action constructors and a `classify` function from a group declaration. Optional — complex consumers write their own constructors. `classify` maps a fired **action** (`{ __action = tag; }`) to its group; `groupOfKind` maps a bare **kind tag** to its group (the static counterpart used to discharge a rule's declared `produces` — see [Declared Stratum](#declared-stratum)). Both throw on an unknown tag.
+
+### Declared Stratum
+
+A rule's dispatch group (stratum) is normally learned by *firing* it: run `produce`, `classify` the actions, read off the group. That fire-and-observe **probe** is a hazard for a value-conditional rule — you must run its body against a synthetic context and swallow throws just to discover where its output belongs. The declared-stratum vocabulary lets a rule carry its stratum **as data** instead, mirroring [gen-resolve](https://github.com/sini/gen-resolve)'s per-equation `stratum` field (an equation names its stratum up front; `scheduleWith { strataOrder }` reads it — no execution).
+
+A rule DECLARES its produced-kind family via `mkRule`'s `produces` field (a list of action tags). `deriveGroup` then discharges the group by **classifying the declared kinds** — no `produce` call:
+
+```nix
+groupOf     : rule -> group | null   # read the declared stratum WITHOUT firing (null = undeclared)
+producesOf  : rule -> [ tag ] | null  # read the declared produced-kind family WITHOUT firing
+deriveGroup : (tag -> group) -> rule -> rule  # classify `produces`, stamp `group`; validate at definition time
+```
+
+`deriveGroup classifyKind rule` (pass `fx.groupOfKind` as `classifyKind`) stamps the rule's `group` from its declared kinds and enforces the single-group-per-rule law at **definition time**:
+
+- declared kinds spanning more than one group abort NAMED (a rule cannot occupy two strata);
+- an explicit `group` that disagrees with the classified stratum aborts NAMED — the declared-stratum / produced-kind **conflict** (the static analog of dispatch's runtime "declared group X but produced Y" throw, caught before any body runs);
+- a rule without `produces` is returned unchanged (undeclared = infer as before), so the vocabulary is fully additive.
+
+`dispatch` **honors** the declaration: a rule whose `produces` is set skips the fire-and-classify validation (its stratum is the declaration, trusted like gen-resolve trusts `stratum`). Undeclared rules keep the classify-validation exactly as before — behavior is byte-identical when nothing declares.
+
+```nix
+fx   = dispatch.mkActions { structural = [ "spawn" ]; resolution = [ "edge" ]; };
+rule = dispatch.deriveGroup fx.groupOfKind (dispatch.mkRule {
+  condition = { host = false; };
+  produce   = _id: _ctx: [ (fx.edge { }) ];
+  produces  = [ "edge" ];          # declared family
+  identity  = "nixos-edges";
+});
+dispatch.groupOf rule               # => "resolution"  (derived, never fired)
+```
 
 ### Conflict Resolution
 
@@ -323,7 +355,7 @@ nix build ./ci#formatter.x86_64-linux      # then run ./result/bin/* . to format
 nix repl --impure --file ci/repl.nix       # all exports in scope for interactive use
 ```
 
-There are **53 tests across 10 suites** (`rule`, `actions`, `dispatch-basic`, `dispatch-groups`, `dispatch-nac`, `conflict`, `compose`, `adapter-select`, `integration`, `purity`). Iteration/convergence coverage lives cross-repo now: the `gen-scope.circular` Kleene ascent is tested in gen-scope, and the loop⊥step composition (one-shot dispatch threaded to a fixpoint) is exercised by consumers such as gen-resolve.
+There are **69 tests across 11 suites** (`rule`, `actions`, `dispatch-basic`, `dispatch-groups`, `dispatch-nac`, `conflict`, `compose`, `declared`, `adapter-select`, `integration`, `purity`). Iteration/convergence coverage lives cross-repo now: the `gen-scope.circular` Kleene ascent is tested in gen-scope, and the loop⊥step composition (one-shot dispatch threaded to a fixpoint) is exercised by consumers such as gen-resolve.
 
 ## Theoretical Foundations
 
@@ -331,7 +363,7 @@ There are **53 tests across 10 suites** (`rule`, `actions`, `dispatch-basic`, `d
 |-------|-------------|----------|
 | Forgy (1982) "RETE" | Implements | Condition-action rule dispatch; rule = condition + action production system |
 | Ehrig et al. (2006) "Fundamentals of Algebraic Graph Transformation" | Implements | Graph rewriting rules, negative application conditions as a first-class `nac` field |
-| Arntzenius & Krishnaswami (2016) "Datafun" | **Implements** | Stratified groups: rules dispatched in a caller-supplied stratum order — all rules in group N complete before group N+1 begins, with context threaded between groups. (The monotone *fixpoint* reading — iterating dispatch to convergence — moved with the loop to gen-resolve.) |
+| Arntzenius & Krishnaswami (2016) "Datafun" | **Implements** | Stratified groups: rules dispatched in a caller-supplied stratum order — all rules in group N complete before group N+1 begins, with context threaded between groups. A rule's stratum is a *static* property (discharged by classifying its declared produced kinds, `deriveGroup`), not a runtime probe — mirroring gen-resolve's per-equation `stratum`. (The monotone *fixpoint* reading — iterating dispatch to convergence — moved with the loop to gen-resolve.) |
 | Palmer et al. (2024) "Intensional Functions" | Implements | Rule identity via `mkIntensional` detection (four-predicate check: `isAttrs` + `name`/`__functor`/`closure`), dedup |
 | Hedin & Magnusson (2003) "JastAdd" | Informed by | Open action types with framework-owned dispatch; aspect-oriented modular attribution |
 | Batory (2005) "AHEAD" | Informed by | Feature composition model inspires the `restrict`/`override`/`chain` rule combinators |

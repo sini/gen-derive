@@ -11,6 +11,7 @@ let
       priority ? 0,
       overrides ? [ ],
       group ? null,
+      produces ? null,
     }:
     {
       inherit
@@ -21,6 +22,7 @@ let
         priority
         overrides
         group
+        produces
         ;
     };
 
