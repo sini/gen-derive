@@ -1,6 +1,6 @@
 {
   inputs = {
-    gen.url = "github:sini/gen";
+    gen-harness.url = "github:sini/gen-harness";
     gen-prelude.url = "github:sini/gen-prelude";
     gen-select.url = "github:sini/gen-select";
     # nixpkgs is the CI runner's dependency (test harness, treefmt). gen-dispatch itself
@@ -10,7 +10,7 @@
 
   outputs =
     inputs@{
-      gen,
+      gen-harness,
       gen-prelude,
       gen-select,
       ...
@@ -26,7 +26,7 @@
         __functor = self: self.fn;
       };
     in
-    gen.lib.mkCi {
+    gen-harness.lib.mkCi {
       inherit inputs;
       name = "gen-dispatch";
       testModules = ./tests;
