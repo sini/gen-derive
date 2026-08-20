@@ -168,7 +168,23 @@ mkRule {
 fromFunction : fn -> rule
 ```
 
-Converts a Nix function into a rule using `builtins.functionArgs` as the condition. Detects `mkIntensional`-wrapped functions (Palmer 2024) via a four-predicate check (`isAttrs` + `name`/`__functor`/`closure`) and extracts identity automatically.
+Converts a Nix function into a rule using `builtins.functionArgs` as the condition. Detects `mkIntensional`-wrapped functions (Palmer 2024) via a four-predicate check (`isAttrs` + `name`/`__functor`/`closure`) and derives identity automatically.
+
+`identity` is the **override handle** — `dispatch` reads it as `acc.overridden ? ${r.identity}` — so it mints, and it is derived by dispatching on the wrapped value's identity regime rather than by reading its name:
+
+Each surviving arm carries a one-character **regime tag** before its payload, so the two never occupy one space:
+
+| regime | the value carries | `identity` |
+|--------|-------------------|------------|
+| minted | `__mint.minted` | `m:` + the minted identity — measured `"m:its:aaaa"` |
+| unmintable | `__mint`, no `minted` | **`null` — the refusal** |
+| unmigrated | no `__mint` | `u:` + the program-point name — measured `"u:host-guards"` |
+
+A handle must be exact. A program point is constant across a constructor's instances, so handing it out as a handle gives every value of one constructor **one** handle, and overriding any of them silently replaces the wrong rule. Where no identity can be minted the rule gets none, and `override` then throws `cannot override anonymous rule` by name — a named refusal in place of a silent wrong-rule override.
+
+The tag is what keeps the two surviving arms disjoint. Untagged, a value merely *named* string-equal to another's minted digest yields that digest's handle, and `override` would then retarget the wrong rule while looking entirely well-formed; tagging before the payload makes that forgery inexpressible rather than unlikely.
+
+It bounds what the substrate **derives**, not the whole namespace: an `identity` passed explicitly to `mkRule` is a caller-supplied string in the same space and is never tagged, and `chain` renders `"chain:${a}:${b}"` by concatenation.
 
 ```nix
 # { host, ... } is the condition -- required arg "host" must be in context
@@ -250,6 +266,10 @@ dispatch.override original replacement
 # Sequential: A's actions feed as context to B
 dispatch.chain { extract; } ruleA ruleB
 ```
+
+`chain`'s composite identity is **null when either arm is null**. A composite is anonymous the moment any of its arms is, because the arm with no identity is the one whose distinct rules the handle can no longer tell apart. The retired `"anon"` default gave two behaviourally distinct composites one handle, which `override` then accepted precisely because it was non-null. The **mixed** pair is what forces that scope rather than the anonymous one: a rule propagating null only when *both* arms are anonymous still collides `chain(identified X, anonymous A)` with `chain(identified X, anonymous B)`.
+
+`restrict` already maps null to null and its `restricted:` prefix is injective on non-null identities, so of the three composite paths only `chain` defaulted.
 
 ### Group ordering (delegated to gen-graph)
 
@@ -364,7 +384,7 @@ There are **69 tests across 11 suites** (`rule`, `actions`, `dispatch-basic`, `d
 | Forgy (1982) "RETE" | Implements | Condition-action rule dispatch; rule = condition + action production system |
 | Ehrig et al. (2006) "Fundamentals of Algebraic Graph Transformation" | Implements | Graph rewriting rules, negative application conditions as a first-class `nac` field |
 | Arntzenius & Krishnaswami (2016) "Datafun" | **Implements** | Stratified groups: rules dispatched in a caller-supplied stratum order — all rules in group N complete before group N+1 begins, with context threaded between groups. A rule's stratum is a *static* property (discharged by classifying its declared produced kinds, `deriveGroup`), not a runtime probe — mirroring gen-resolve's per-equation `stratum`. (The monotone *fixpoint* reading — iterating dispatch to convergence — moved with the loop to gen-resolve.) |
-| Palmer et al. (2024) "Intensional Functions" | Implements | Rule identity via `mkIntensional` detection (four-predicate check: `isAttrs` + `name`/`__functor`/`closure`), dedup |
+| Palmer et al. (2024) "Intensional Functions" | **Informed by** | Rule identity via `mkIntensional` detection (four-predicate check: `isAttrs` + `name`/`__functor`/`closure`), dispatched on the wrapped value's identity regime. **Not "Implements", and the hedge is the point:** Palmer's Fig. 5 is a conjunction over identity AND closure, and gen-dispatch neither constructs intensional functions nor sees a closure — it consumes whatever identity a producer has stamped, and on the unmigrated regime that is still a program-point name. Theorem 1 is a preservation theorem about 𝜆ITS reduction and its soundness does not transfer. What gen-dispatch owns is the **refusal**: where no identity can be minted the rule gets none, rather than a name standing in for one |
 | Hedin & Magnusson (2003) "JastAdd" | Informed by | Open action types with framework-owned dispatch; aspect-oriented modular attribution |
 | Batory (2005) "AHEAD" | Informed by | Feature composition model inspires the `restrict`/`override`/`chain` rule combinators |
 | Berry & Boudol (1990) "Chemical Abstract Machine" | Informed by | Rules as reactions producing transformations; multiset rewriting as a dispatch metaphor |

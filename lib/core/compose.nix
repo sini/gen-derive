@@ -34,12 +34,30 @@ let
           feedback = extract actionsA;
         in
         actionsA ++ ruleB.produce id (ctx // feedback);
+      # EITHER ARM NULL ⇒ NULL. A composite is anonymous the moment ANY of its arms is,
+      # because the arm with no identity is the one whose distinct rules the handle can
+      # no longer tell apart. Defaulting a null arm to a constant hands two
+      # behaviourally distinct composites ONE handle, and `override` accepts it without
+      # complaint precisely because it is non-null — a silent wrong-rule override.
+      #
+      # The MIXED pair is what forces this scope rather than the anonymous one: a rule
+      # that propagates null only when BOTH arms are anonymous still collides
+      # `chain(identified X, anonymous A)` with `chain(identified X, anonymous B)`.
+      # `restrict` already maps null to null and its prefix is injective on non-null
+      # identities, so of the three composite paths only `chain` defaulted.
+      #
+      # A composite INHERITS its arms' regime tags rather than adding one of its own:
+      # `rule.nix` emits `m:`/`u:` on every handle it derives, so those tags survive
+      # into the composite unchanged and the two derived arms stay disjoint here too.
+      # KNOWN RESIDUAL, inherited and not introduced by that tagging: this rendering is
+      # a bare concatenation, so arms whose own identities contain `:` can in principle
+      # render two different pairs alike. That predates the tags and belongs to the
+      # composite's own encoding, not to the regime dispatch.
       identity =
-        let
-          a = if ruleA.identity != null then ruleA.identity else "anon";
-          b = if ruleB.identity != null then ruleB.identity else "anon";
-        in
-        "chain:${a}:${b}";
+        if ruleA.identity == null || ruleB.identity == null then
+          null
+        else
+          "chain:${ruleA.identity}:${ruleB.identity}";
     };
 in
 {

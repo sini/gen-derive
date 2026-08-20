@@ -118,6 +118,10 @@ in
       expected = "chain:a:b";
     };
 
+    # A composite is anonymous the moment ANY of its arms is: the arm with no identity
+    # is the one whose distinct rules the handle can no longer tell apart. The retired
+    # "anon" default gave two behaviourally distinct composites ONE handle, which
+    # `override` then accepted precisely because it was non-null.
     test-chain-anonymous = {
       expr =
         let
@@ -132,7 +136,26 @@ in
           chained = chain { extract = _: { }; } a b;
         in
         chained.identity;
-      expected = "chain:anon:anon";
+      expected = null;
+    };
+
+    # The MIXED pair is what forces the either-arm scope rather than the anonymous one:
+    # a rule propagating null only when BOTH arms are anonymous still collides these two.
+    test-chain-mixed-identified-and-anonymous = {
+      expr =
+        let
+          identified = mkRule {
+            condition = { };
+            produce = _id: _ctx: [ ];
+            identity = "a";
+          };
+          anonymous = mkRule {
+            condition = { };
+            produce = _id: _ctx: [ ];
+          };
+        in
+        (chain { extract = _: { }; } identified anonymous).identity;
+      expected = null;
     };
   };
 }
