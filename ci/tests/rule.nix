@@ -1,12 +1,33 @@
 {
   lib,
   genDispatch,
-  mkIntensional,
   ...
 }:
 let
   inherit (genDispatch) mkRule fromFunction fromFunctionMatch;
-  mkI = mkIntensional;
+
+  # A record of the INTENSIONAL SHAPE — the four fields `fromFunction`'s guard reads
+  # (`isAttrs` + `name`/`__functor`/`closure`). It is deliberately NOT gen-algebra's
+  # constructor, which is an ENCODER — `mkIntensional : hashIdentity -> registry -> ctor
+  # -> args` — and whose values are therefore always MINTED, under a digest DERIVED from
+  # the registry coordinate.
+  #
+  # ★ THE CELLS BELOW CHOOSE THE REGIME AND THE DIGEST, AND AN ENCODER-BUILT VALUE CANNOT
+  # LET THEM. The unmigrated arm is defined by the ABSENCE of `__mint`, which no
+  # constructor call can produce; the unmintable arm is a refusal a producer stamps; and
+  # `test-name-cannot-forge-a-minted-handle` hand-picks `its:aaaa` so that a second
+  # value's NAME can be string-equal to it, which a derived digest forecloses by
+  # construction. Building these by constructing a value and overriding its `__mint`
+  # would assert about a value the constructor cannot emit while reading as though it
+  # could — so the shape is built directly instead.
+  #
+  # What would RETIRE these records is the migration that turns a rule's distinguishing
+  # content from a caller-supplied lambda into a first-order term the substrate interprets:
+  # once that lands the encoder can build them, and the regime stops being a cell's choice.
+  intensionalLike = name: closure: fn: {
+    inherit name closure fn;
+    __functor = self: self.fn;
+  };
 in
 {
   flake.tests.rule = {
@@ -97,7 +118,7 @@ in
     test-from-function-intensional = {
       expr =
         let
-          fn = mkI "host-guards" { } ({ host, ... }: [ ]);
+          fn = intensionalLike "host-guards" { } ({ host, ... }: [ ]);
           r = fromFunction fn;
         in
         r.identity;
@@ -113,10 +134,10 @@ in
       expr =
         let
           digest = "its:aaaa";
-          minted = (mkI "counter" { } ({ host, ... }: [ ])) // {
+          minted = (intensionalLike "counter" { } ({ host, ... }: [ ])) // {
             __mint.minted = digest;
           };
-          forger = mkI digest { } ({ host, ... }: [ ]);
+          forger = intensionalLike digest { } ({ host, ... }: [ ]);
         in
         {
           mintedHandle = (fromFunction minted).identity;
@@ -150,7 +171,7 @@ in
     test-from-function-identity-by-regime = {
       expr =
         let
-          base = mkI "host-guards" { } ({ host, ... }: [ ]);
+          base = intensionalLike "host-guards" { } ({ host, ... }: [ ]);
           minted = base // {
             __mint.minted = "its:aaaa";
           };

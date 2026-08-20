@@ -190,8 +190,11 @@ It bounds what the substrate **derives**, not the whole namespace: an `identity`
 # { host, ... } is the condition -- required arg "host" must be in context
 dispatch.fromFunction ({ host, ... }: [ (fx.spawn { kind = "user"; }) ])
 
-# mkIntensional wrapping adds dedup identity
-dispatch.fromFunction (mkIntensional "host-init" {} ({ host, ... }: [ ... ]))
+# An intensional value carries dedup identity. gen-algebra's constructor is an ENCODER --
+# mkIntensional : hashIdentity -> registry -> ctor -> args -- so the program point is the
+# constructor name, the registry's builder supplies the function, and the identity is
+# derived from the registry coordinate rather than taken from the caller.
+dispatch.fromFunction (algebra.mkIntensional hashIdentity ruleRegistry "host-init" { })
 ```
 
 ### `fromFunctionMatch`

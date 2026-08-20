@@ -19,17 +19,11 @@
       prelude = import "${gen-prelude}/lib";
       genDispatch = import ../lib { inherit prelude; };
       genSelect = import "${gen-select}/lib";
-      # Intensional function constructor (Palmer §2.2) — test fixtures only. Inlined
-      # from the former gen-algebra.mkIntensional to keep gen-dispatch dependency-free.
-      mkIntensional = name: closure: fn: {
-        inherit name fn closure;
-        __functor = self: self.fn;
-      };
     in
     gen-harness.lib.mkCi {
       inherit inputs;
       name = "gen-dispatch";
       testModules = ./tests;
-      specialArgs = { inherit genDispatch genSelect mkIntensional; };
+      specialArgs = { inherit genDispatch genSelect; };
     };
 }
