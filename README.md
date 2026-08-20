@@ -66,7 +66,7 @@ Wrapping repeated steps into a convergence loop — extract feedback, widen cont
 | [gen-bind](https://github.com/sini/gen-bind) | Module binding (inject external args into NixOS modules) |
 | **gen-dispatch** | **This lib** — Relational rule dispatch STEP (stratified groups, conflict resolution) |
 | [gen-resolve](https://github.com/sini/gen-resolve) | Demand-driven RAG evaluator over scope graphs (attribute schedule + convergence loop) |
-| [gen-rebuild](https://github.com/sini/gen-rebuild) | Pure-Nix incremental rebuilder (change propagation, AFFECTED set) |
+| [gen-memo](https://github.com/sini/gen-memo) | The incremental plane — decides reuse, never evaluates (change propagation, AFFECTED set) |
 | [gen-vars](https://github.com/sini/gen-vars) | Pure-Nix vars/secrets (den-agnostic) |
 | [gen-flake](https://github.com/sini/gen-flake) | The nixpkgs boundary — compose purely, inject resolved values, build NixOS systems (value-injection) |
 
