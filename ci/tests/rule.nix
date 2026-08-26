@@ -115,14 +115,38 @@ in
     # The UNMIGRATED arm: this fixture carries no `__mint`, so the program-point name
     # is still all the reader has — carried under that arm's REGIME TAG, because the
     # derived handle's arms must occupy disjoint spaces.
+    #
+    # Every projection but `.condition` is forced here, via the same attrset-comparison
+    # idiom `test-mkrule-defaults` uses (nix-unit's equality check forces each listed
+    # field). `.condition` stays unforced BY DESIGN: on an intensional record it aborts
+    # uncatchably — not even `builtins.tryEval` observes it, see the `fromFunction` trap
+    # in AGENTS.md — so forcing it here would crash this cell rather than pin a value.
+    # That gap is a distinct, disjoint defect (README claims the capability; forcing it
+    # implements nothing this cell's forcing set can widen into).
     test-from-function-intensional = {
       expr =
         let
           fn = intensionalLike "host-guards" { } ({ host, ... }: [ ]);
           r = fromFunction fn;
         in
-        r.identity;
-      expected = "u:host-guards";
+        {
+          identity = r.identity;
+          nac = r.nac;
+          priority = r.priority;
+          overrides = r.overrides;
+          group = r.group;
+          produces = r.produces;
+          hasProduce = builtins.isFunction r.produce;
+        };
+      expected = {
+        identity = "u:host-guards";
+        nac = null;
+        priority = 0;
+        overrides = [ ];
+        group = null;
+        produces = null;
+        hasProduce = true;
+      };
     };
 
     # THE FORGERY THE TAG FORECLOSES. `identity` is the override handle, so an untagged
