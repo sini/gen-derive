@@ -4,7 +4,12 @@
   ...
 }:
 let
-  inherit (genDispatch) mkRule fromFunction fromFunctionMatch;
+  inherit (genDispatch)
+    mkRule
+    fromFunction
+    fromFunctionMatch
+    dispatch
+    ;
 
   # A record of the INTENSIONAL SHAPE — the four fields `fromFunction`'s guard reads
   # (`isAttrs` + `name`/`__functor`/`closure`). It is deliberately NOT gen-algebra's
@@ -116,13 +121,14 @@ in
     # is still all the reader has — carried under that arm's REGIME TAG, because the
     # derived handle's arms must occupy disjoint spaces.
     #
-    # Every projection but `.condition` is forced here, via the same attrset-comparison
-    # idiom `test-mkrule-defaults` uses (nix-unit's equality check forces each listed
-    # field). `.condition` stays unforced BY DESIGN: on an intensional record it aborts
-    # uncatchably — not even `builtins.tryEval` observes it, see the `fromFunction` trap
-    # in AGENTS.md — so forcing it here would crash this cell rather than pin a value.
-    # That gap is a distinct, disjoint defect (README claims the capability; forcing it
-    # implements nothing this cell's forcing set can widen into).
+    # `.condition` is forced here alongside everything else, via the same
+    # attrset-comparison idiom `test-mkrule-defaults` uses (nix-unit's equality check
+    # forces each listed field). It used to be excluded BY DESIGN: on an intensional
+    # record `functionArgs` was applied to the wrapping record rather than its `.fn`
+    # and aborted uncatchably — not even `builtins.tryEval` observed it, see the
+    # `fromFunction` trap history in AGENTS.md. Now fixed: `fromFunction` reaches the
+    # record's `.fn` through `__functor`, the same partial application `produce`
+    # already performs, so `functionArgs` sees a real lambda.
     test-from-function-intensional = {
       expr =
         let
@@ -130,6 +136,7 @@ in
           r = fromFunction fn;
         in
         {
+          condition = r.condition;
           identity = r.identity;
           nac = r.nac;
           priority = r.priority;
@@ -139,6 +146,9 @@ in
           hasProduce = builtins.isFunction r.produce;
         };
       expected = {
+        condition = {
+          host = false;
+        };
         identity = "u:host-guards";
         nac = null;
         priority = 0;
@@ -146,6 +156,53 @@ in
         group = null;
         produces = null;
         hasProduce = true;
+      };
+    };
+
+    # ORACLE: dispatching a rule built from an intensional record completes end to
+    # end — matching condition, firing, and returning actions — rather than raising
+    # the same `functionArgs` error the bare projection above used to. Exercises the
+    # fix through `dispatch`, not just `fromFunction` alone.
+    test-from-function-intensional-dispatches = {
+      expr =
+        let
+          fn = intensionalLike "host-guards" { } ({ host, ... }: [ "spawned" ]);
+          r = dispatch {
+            rules = [ (fromFunction fn) ];
+            id = null;
+            context = {
+              host = "x";
+            };
+            match = fromFunctionMatch;
+            classify = _: "default";
+            groupOrder = [ "default" ];
+          };
+        in
+        r.actions;
+      expected = {
+        default = [ "spawned" ];
+      };
+    };
+
+    # CONTROL, same run: the plain-lambda path this fix must leave untouched,
+    # exercised through the identical dispatch mechanism as the cell above.
+    test-control-from-function-plain-dispatches = {
+      expr =
+        let
+          r = dispatch {
+            rules = [ (fromFunction ({ host, ... }: [ "spawned" ])) ];
+            id = null;
+            context = {
+              host = "x";
+            };
+            match = fromFunctionMatch;
+            classify = _: "default";
+            groupOrder = [ "default" ];
+          };
+        in
+        r.actions;
+      expected = {
+        default = [ "spawned" ];
       };
     };
 
@@ -189,9 +246,9 @@ in
     };
 
     # `identity` is the OVERRIDE HANDLE, so it mints, and it is derived by regime.
-    # Only `.identity` is forced here: `fromFunction` binds `condition =
-    # functionArgs fn`, and an intensional record is not a lambda, so forcing the
-    # condition aborts uncatchably (see the `fromFunction` trap in AGENTS.md).
+    # Only `.identity` is forced here — this cell is about the REGIME, not the
+    # condition path, which is pinned separately by `test-from-function-intensional`
+    # and `test-from-function-intensional-dispatches`.
     test-from-function-identity-by-regime = {
       expr =
         let

@@ -82,7 +82,14 @@ let
   fromFunction =
     fn:
     let
-      args = builtins.functionArgs fn;
+      # An intensional record is a FUNCTOR, not a function: `functionArgs` inspects a
+      # lambda's AST and aborts on an attrset, even one Nix's call protocol will
+      # happily apply. Reach the lambda `__functor` itself calls — `fn.__functor fn`,
+      # the same partial application `fn ctx` below performs implicitly — rather than
+      # a private field name of one encoder; that is the only thing `functionArgs` can
+      # read, and it is what `produce` already invokes.
+      target = if isIntensional fn then fn.__functor fn else fn;
+      args = builtins.functionArgs target;
     in
     mkRule {
       condition = args;
