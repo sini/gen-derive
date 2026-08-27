@@ -205,6 +205,8 @@ fromFunctionMatch : condition -> id -> ctx -> bool
 
 Default `match` implementation for `fromFunction` rules. Checks that all required args (non-optional in `functionArgs`) are present in context. Handles `__restricted` conditions from `restrict` by recursively matching both the original and extra conditions.
 
+**Limitation: `id` is a bound parameter this matcher never reads.** Every branch above decides purely from `condition` and `ctx`, so two candidates with the same context match identically regardless of which `id` is being tested — `fromFunctionMatch` cannot express id-conditional dispatch; under it, an id-conditional rule silently matches every id. Reach for `adapters.select.mkMatch` when matching needs to see the id, but it is not a drop-in swap: it forwards its `ctx` argument straight to `genSelect.matches`, which expects gen-select's five-field accessor record, not this library's flat dispatch context — build the accessor context the bridge expects (see "Adapter: gen-select bridge" below) rather than handing it a `fromFunction` rule's plain context.
+
 ### `mkActions`
 
 ```nix

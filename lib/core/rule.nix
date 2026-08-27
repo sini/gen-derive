@@ -104,6 +104,18 @@ let
       identity = if isIntensional fn then taggedHandle (identityOf fn) else null;
     };
 
+  # LIMITATION: `id` is BOUND here and NEVER READ — every arm below decides purely
+  # from `condition` and `ctx`. A rule dispatched through this matcher therefore
+  # cannot condition on the candidate id at all: id-conditional dispatch over
+  # `fromFunctionMatch` silently matches EVERY id, because there is no id-shaped
+  # comparison here to fail.
+  #
+  # The id-AWARE matcher is `adapters.select.mkMatch`, but it is not a drop-in swap:
+  # it forwards its `ctx` argument straight to `genSelect.matches`, which expects
+  # gen-select's five-field accessor record — a different object from this library's
+  # flat dispatch-context attrset. A consumer that needs id-aware matching builds
+  # that accessor context itself (see the gen-select bridge in the adapter tier);
+  # handing `mkMatch` a `fromFunction` rule's plain context is not the same shape.
   fromFunctionMatch =
     condition: id: ctx:
     if condition ? __restricted then
