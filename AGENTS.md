@@ -91,6 +91,8 @@ The rule record `mkRule` returns carries exactly `condition`, `group`, `identity
 
 ## Measured traps
 
+<!-- gen-citations:begin -->
+
 Every row verified in this run at rev `8f537ec` by evaluating against `nix eval .#lib --apply`. Shared fixtures: `fx = mkActions { structural = [ "spawn" "enrich" ]; resolution = [ "edge" ]; }`; `mk = a: mkRule ({ condition = {}; produce = _: _: []; } // a)`; `run = a: dispatch ({ rules = []; id = null; context = {}; match = fromFunctionMatch; classify = fx.classify; groupOrder = [ "structural" ]; } // a)`. `te e = (builtins.tryEval e).success`.
 
 | Trap | Evidence |
@@ -109,8 +111,8 @@ Every row verified in this run at rev `8f537ec` by evaluating against `nix eval 
 | `deriveGroup`'s eager checks do fire: kinds spanning groups, and an explicit `group` disagreeing with the classified one | `te` on `produces = [ "spawn" "edge" ]` ⇒ `false`; on `produces = [ "edge" ]` with `group = "structural"` ⇒ `false`. Controls: agreeing explicit group ⇒ `"resolution"`; a rule with no `produces` is returned unchanged ⇒ `"structural"`. Tests: `test-deriveGroup-spanning-throws`, `test-deriveGroup-conflict-throws`, `test-deriveGroup-undeclared-noop` |
 | `mkActions` reserves `classify` and `groupOfKind` — an action tag with either name is **silently shadowed**, yielding no constructor | `collide = mkActions { g = [ "classify" "groupOfKind" "spawn" ]; }`: `builtins.isFunction collide.classify` ⇒ `true`, and `collide.classify { __action = "spawn"; }` ⇒ `"g"` (a group name, not an action value); `collide.groupOfKind "spawn"` ⇒ `"g"`. Positive control: `collide.spawn {}` ⇒ `{"__action":"spawn"}` |
 | A constructor's `args` can **overwrite** `__action`, silently re-tagging the action | `(fx.spawn { __action = "edge"; }).__action` ⇒ `"edge"`, and `fx.classify (fx.spawn { __action = "edge"; })` ⇒ `"resolution"` |
-| `classify` on an action lacking `__action` raises an error `tryEval` cannot catch | `error: attribute '__action' missing` at `lib/core/actions.nix:27:38` |
-| A `chain` result is **not** a `mkRule` record — it has no `group` and no `produces`, so multi-group dispatch fails on a raw missing-attribute error, not the named "has no group" throw | `builtins.attrNames (chain { extract = _: {}; } r r)` ⇒ `["condition","identity","nac","overrides","priority","produce"]`; `chained ? group` ⇒ `false`; dispatching it under `[ "structural" "resolution" ]` ⇒ `error: attribute 'group' missing` at `lib/core/dispatch.nix:47:22`. Single-group dispatch of the same rule works (`.actions` keys `["structural"]`) |
+| `classify` on an action lacking `__action` raises an error `tryEval` cannot catch | `error: attribute '__action' missing` at `lib/core/actions.nix:27` |
+| A `chain` result is **not** a `mkRule` record — it has no `group` and no `produces`, so multi-group dispatch fails on a raw missing-attribute error, not the named "has no group" throw | `builtins.attrNames (chain { extract = _: {}; } r r)` ⇒ `["condition","identity","nac","overrides","priority","produce"]`; `chained ? group` ⇒ `false`; dispatching it under `[ "structural" "resolution" ]` ⇒ `error: attribute 'group' missing` at `lib/core/dispatch.nix:47`. Single-group dispatch of the same rule works (`.actions` keys `["structural"]`) |
 | `override` returns the **replacement**, and throws on an anonymous original | `(override spawnRule edgeRule).identity` ⇒ `"e"` (the replacement's), `.overrides` ⇒ `["s"]`; `te (override (mk {}) edgeRule)` ⇒ `false`. Tests: `test-override-appends`, `test-override-anonymous-throws` |
 | `restrict` prefixes identity with `restricted:` and preserves `null` for anonymous rules | `(restrict { x = false; } spawnRule).identity` ⇒ `"restricted:s"`; on an anonymous rule ⇒ `null`. Test: `test-restrict-shape` |
 | `chain`'s composite identity is **null when EITHER arm is null** — it no longer defaults a null arm to `"anon"` | `(chain { extract = _: {}; } (mk {}) (mk {})).identity` ⇒ `null`; the MIXED pair `(chain … spawnRule (mk {})).identity` ⇒ `null`; both arms identified ⇒ `"chain:a:b"`, unchanged. `override` on the anonymous composite now **throws**; under the retired `"anon"` default the handle was `"chain:anon:anon"` and `override` **accepted** it — a silent wrong-rule override. Tests: `test-chain-anonymous`, `test-chain-mixed-identified-and-anonymous`, `test-chain-identity` |
@@ -126,6 +128,8 @@ Every row verified in this run at rev `8f537ec` by evaluating against `nix eval 
 | Equal-priority ties fire in **declaration order** (a total-order sort, not `builtins.sort` stability) | two equal-priority rules tagged `first` and `second` ⇒ actions in order `["first","second"]`. Test: `test-equal-priority-deterministic` (`ci/tests/conflict.nix`) |
 | The repo was renamed from **gen-derive** and carries no residue | `git grep -n -- 'gen-derive'` over the tracked tree ⇒ no match (exit 1). Positive control, same instrument same run: `git grep -c -- 'gen-dispatch'` ⇒ 12 tracked files. `AGENTS.md` is globally gitignored (`/home/sini/.config/git/ignore:22`), so `git grep` cannot see this sheet |
 | gen-algebra is recorded as a removed dead input in `flake.nix:5`, and the purity scan strips comments before matching — which is why that comment does not trip its own `"gen-algebra"` forbidden token | `flake.nix:5` reads `# re-exports + the vendored imap0/unique. The former nixpkgs.lib and gen-algebra (dead)`; `ci/tests/purity.nix` `stripComments` runs before the token filter. `ci/flake.lock` still carries `gen-algebra` nodes transitively via `gen` / sibling CI inputs |
+
+<!-- gen-citations:end -->
 
 ## Theory
 
