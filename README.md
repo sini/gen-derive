@@ -24,15 +24,15 @@ gen-dispatch is one dispatch **step** — a pure function of `(rules, context)`.
 
 ## Terminology
 
-| Term | Definition | Source |
-|------|-----------|--------|
-| Rule | Guarded transformation unit: condition + action producer + identity | Ehrig 2006; Forgy 1982 |
-| Condition | Predicate determining when a rule fires | Forgy 1982 (RETE LHS) |
-| Action | Opaque tagged value produced when a rule fires | Forgy 1982 (RETE RHS) |
-| Group | Named dispatch stratum with DAG ordering | Arntzenius 2016 (stratification) |
-| Match | Testing a condition against a position | Ehrig 2006 (match morphism) |
-| Dispatch step | One guard→effect pass over ordered groups (the unit a convergence loop iterates) | Forgy 1982; Arntzenius 2016 |
-| NAC | Negative application condition — pattern that must NOT match | Ehrig 2006 |
+| Term          | Definition                                                                       | Source                           |
+| ------------- | -------------------------------------------------------------------------------- | -------------------------------- |
+| Rule          | Guarded transformation unit: condition + action producer + identity              | Ehrig 2006; Forgy 1982           |
+| Condition     | Predicate determining when a rule fires                                          | Forgy 1982 (RETE LHS)            |
+| Action        | Opaque tagged value produced when a rule fires                                   | Forgy 1982 (RETE RHS)            |
+| Group         | Named dispatch stratum with DAG ordering                                         | Arntzenius 2016 (stratification) |
+| Match         | Testing a condition against a position                                           | Ehrig 2006 (match morphism)      |
+| Dispatch step | One guard→effect pass over ordered groups (the unit a convergence loop iterates) | Forgy 1982; Arntzenius 2016      |
+| NAC           | Negative application condition — pattern that must NOT match                     | Ehrig 2006                       |
 
 ## Overview
 
@@ -42,31 +42,31 @@ A **rule** is a guarded action producer (`mkRule` / `fromFunction`). A **dispatc
 
 Three concerns meet at a dispatch step, and gen-dispatch owns exactly one of them:
 
-| Concern | Owner | Entry point |
-|---------|-------|-------------|
-| One guard→effect pass over an ordered group list | **gen-dispatch** (this lib) | `dispatch` |
+| Concern                                                               | Owner                              | Entry point                                     |
+| --------------------------------------------------------------------- | ---------------------------------- | ----------------------------------------------- |
+| One guard→effect pass over an ordered group list                      | **gen-dispatch** (this lib)        | `dispatch`                                      |
 | Iterating a step to a fixpoint (a circular attribute's Kleene ascent) | gen-resolve / `gen-scope.circular` | thread domain state through repeated `dispatch` |
-| Turning `before`/`after` constraints into a linear group order | gen-graph | a topological sort |
+| Turning `before`/`after` constraints into a linear group order        | gen-graph                          | a topological sort                              |
 
 Wrapping repeated steps into a convergence loop — extract feedback, widen context, re-dispatch until stable — is a *separable* concern owned by `gen-scope.circular`. gen-dispatch stays a pure step: the caller threads the domain state and reads the actions off the converged state. See [Convergence](#convergence-the-loop-is-gen-resolves) below.
 
 ## Gen Ecosystem
 
-| Library | Role |
-|---------|------|
-| [gen-prelude](https://github.com/sini/gen-prelude) | Pure nixpkgs-lib-free utility base (builtins re-exports + vendored lib utils) |
-| [gen-algebra](https://github.com/sini/gen-algebra) | Pure primitives (record, search monad, either, intensional identity) |
-| [gen-types](https://github.com/sini/gen-types) | Clean-room MIT structural type checker (leaf/poly checkers; `verify: v → null\|err`) |
-| [gen-merge](https://github.com/sini/gen-merge) | Byte-mode module merge engine (`evalModuleTree`, byte-identical to nixpkgs `lib.evalModules` over the priority subset) |
-| [gen-schema](https://github.com/sini/gen-schema) | Typed registries (kinds, instances, collections, refs); re-hosted on gen-merge |
-| [gen-aspects](https://github.com/sini/gen-aspects) | Aspect type system (traits, classification, dispatch); re-hosted on gen-merge |
-| [gen-scope](https://github.com/sini/gen-scope) | HOAG scope-graph evaluator (demand-driven, \_eval memoization, circular attributes) |
-| [gen-graph](https://github.com/sini/gen-graph) | Accessor-based graph query combinators (traversal, condensation, phaseOrder) |
-| [gen-select](https://github.com/sini/gen-select) | Selector algebra (pattern matching over graph positions) |
-| [gen-bind](https://github.com/sini/gen-bind) | Module binding (inject external args into NixOS modules) |
-| **gen-dispatch** | **This lib** — Relational rule dispatch STEP (stratified groups, conflict resolution) |
-| [gen-memo](https://github.com/sini/gen-memo) | The incremental plane — decides reuse, never evaluates (change propagation, AFFECTED set) |
-| [gen-vars](https://github.com/sini/gen-vars) | Pure-Nix vars/secrets (den-agnostic) |
+| Library                                            | Role                                                                                                                   |
+| -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| [gen-prelude](https://github.com/sini/gen-prelude) | Pure nixpkgs-lib-free utility base (builtins re-exports + vendored lib utils)                                          |
+| [gen-algebra](https://github.com/sini/gen-algebra) | Pure primitives (record, search monad, either, intensional identity)                                                   |
+| [gen-types](https://github.com/sini/gen-types)     | Clean-room MIT structural type checker (leaf/poly checkers; `verify: v → null\|err`)                                   |
+| [gen-merge](https://github.com/sini/gen-merge)     | Byte-mode module merge engine (`evalModuleTree`, byte-identical to nixpkgs `lib.evalModules` over the priority subset) |
+| [gen-schema](https://github.com/sini/gen-schema)   | Typed registries (kinds, instances, collections, refs); re-hosted on gen-merge                                         |
+| [gen-aspects](https://github.com/sini/gen-aspects) | Aspect type system (traits, classification, dispatch); re-hosted on gen-merge                                          |
+| [gen-scope](https://github.com/sini/gen-scope)     | HOAG scope-graph evaluator (demand-driven, \_eval memoization, circular attributes)                                    |
+| [gen-graph](https://github.com/sini/gen-graph)     | Accessor-based graph query combinators (traversal, condensation, phaseOrder)                                           |
+| [gen-select](https://github.com/sini/gen-select)   | Selector algebra (pattern matching over graph positions)                                                               |
+| [gen-bind](https://github.com/sini/gen-bind)       | Module binding (inject external args into NixOS modules)                                                               |
+| **gen-dispatch**                                   | **This lib** — Relational rule dispatch STEP (stratified groups, conflict resolution)                                  |
+| [gen-memo](https://github.com/sini/gen-memo)       | The incremental plane — decides reuse, never evaluates (change propagation, AFFECTED set)                              |
+| [gen-vars](https://github.com/sini/gen-vars)       | Pure-Nix vars/secrets (den-agnostic)                                                                                   |
 
 ## Usage
 
@@ -172,11 +172,11 @@ Converts a Nix function into a rule using `builtins.functionArgs` as the conditi
 
 Each surviving arm carries a one-character **regime tag** before its payload, so the two never occupy one space:
 
-| regime | the value carries | `identity` |
-|--------|-------------------|------------|
-| minted | `__mint.minted` | `m:` + the minted identity — measured `"m:its:aaaa"` |
-| unmintable | `__mint`, no `minted` | **`null` — the refusal** |
-| unmigrated | no `__mint` | `u:` + the program-point name — measured `"u:host-guards"` |
+| regime     | the value carries     | `identity`                                                 |
+| ---------- | --------------------- | ---------------------------------------------------------- |
+| minted     | `__mint.minted`       | `m:` + the minted identity — measured `"m:its:aaaa"`       |
+| unmintable | `__mint`, no `minted` | **`null` — the refusal**                                   |
+| unmigrated | no `__mint`           | `u:` + the program-point name — measured `"u:host-guards"` |
 
 A handle must be exact. A program point is constant across a constructor's instances, so handing it out as a handle gives every value of one constructor **one** handle, and overriding any of them silently replaces the wrong rule. Where no identity can be minted the rule gets none, and `override` then throws `cannot override anonymous rule` by name — a named refusal in place of a silent wrong-rule override.
 
@@ -249,11 +249,11 @@ dispatch.groupOf rule               # => "resolution"  (derived, never fired)
 
 Three strategies, applied in order:
 
-| Strategy | Tier | Mechanism |
-|----------|------|-----------|
-| Override | Core | Rule names identities it replaces via the `overrides` field |
-| Priority | Core | Numeric `priority` (higher first), `exclusive` mode |
-| Specificity | Adapter | Selector constraint term count via `selectorSpecificity` |
+| Strategy    | Tier    | Mechanism                                                   |
+| ----------- | ------- | ----------------------------------------------------------- |
+| Override    | Core    | Rule names identities it replaces via the `overrides` field |
+| Priority    | Core    | Numeric `priority` (higher first), `exclusive` mode         |
+| Specificity | Adapter | Selector constraint term count via `selectorSpecificity`    |
 
 **Resolution order:** override suppression → priority sort → specificity (adapter) → ties fire additively. Equal-priority ties are ordered deterministically by declaration order (a total-order sort, independent of `builtins.sort` stability or rule-list enumeration order).
 
@@ -382,15 +382,15 @@ There are **69 tests across 11 suites** (`rule`, `actions`, `dispatch-basic`, `d
 
 ## Theoretical Foundations
 
-| Paper | Relationship | Used for |
-|-------|-------------|----------|
-| Forgy (1982) "RETE" | **Informed by** — vocabulary only, and the hedge is the point | Rule = condition (LHS) + action production (RHS), which is `mkRule`'s `condition`/`produce` pair. That vocabulary is genuinely his (*LHS* 21, *RHS* 4, *production* 59, *working memory* 43; "Perform the actions in the RHS of the selected production"). ★ **What gen-dispatch declines is the paper's actual result.** RETE *is* the match algorithm — a discrimination network compiled from the patterns, through which tokens flow, and whose whole point is that match state SURVIVES BETWEEN CYCLES so a cycle costs only the change (*network* 38, *token* 64). gen-dispatch builds no network and keeps no state across calls: it is a pure function of `(rules, context)` that evaluates every rule's condition on every dispatch. So the row previously read *Implements*, and could not be defended — the borrowing is the naming of the two halves of a rule, and nothing else. Rewriting dispatch to be incremental would be a design change, not a citation change, and this row does not presuppose one |
-| Ehrig et al. (2006) "Fundamentals of Algebraic Graph Transformation" | Implements | Graph rewriting rules, negative application conditions as a first-class `nac` field |
-| Arntzenius & Krishnaswami (2016) "Datafun" | **Implements** | Stratified groups: rules dispatched in a caller-supplied stratum order — all rules in group N complete before group N+1 begins, with context threaded between groups. A rule's stratum is a *static* property (discharged by classifying its declared produced kinds, `deriveGroup`), not a runtime probe — mirroring gen-resolve's per-equation `stratum`. (The monotone *fixpoint* reading — iterating dispatch to convergence — moved with the loop to gen-resolve.) |
-| Palmer et al. (2024) "Intensional Functions" | **Informed by** | Rule identity via `mkIntensional` detection (four-predicate check: `isAttrs` + `name`/`__functor`/`closure`), dispatched on the wrapped value's identity regime. **Not "Implements", and the hedge is the point:** Palmer's Fig. 5 is a conjunction over identity AND closure, and gen-dispatch neither constructs intensional functions nor sees a closure — it consumes whatever identity a producer has stamped, and on the unmigrated regime that is still a program-point name. Theorem 1 is a preservation theorem about 𝜆ITS reduction and its soundness does not transfer. What gen-dispatch owns is the **refusal**: where no identity can be minted the rule gets none, rather than a name standing in for one |
-| Hedin & Magnusson (2003) "JastAdd" | Informed by | Open action types with framework-owned dispatch; aspect-oriented modular attribution |
-| Batory (2005) "AHEAD" | Informed by | Feature composition model inspires the `restrict`/`override`/`chain` rule combinators |
-| Berry & Boudol (1990) "Chemical Abstract Machine" | Informed by | Rules as reactions producing transformations; multiset rewriting as a dispatch metaphor |
+| Paper                                                                | Relationship                                                  | Used for                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| -------------------------------------------------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Forgy (1982) "RETE"                                                  | **Informed by** — vocabulary only, and the hedge is the point | Rule = condition (LHS) + action production (RHS), which is `mkRule`'s `condition`/`produce` pair. That vocabulary is genuinely his (*LHS* 21, *RHS* 4, *production* 59, *working memory* 43; "Perform the actions in the RHS of the selected production"). ★ **What gen-dispatch declines is the paper's actual result.** RETE *is* the match algorithm — a discrimination network compiled from the patterns, through which tokens flow, and whose whole point is that match state SURVIVES BETWEEN CYCLES so a cycle costs only the change (*network* 38, *token* 64). gen-dispatch builds no network and keeps no state across calls: it is a pure function of `(rules, context)` that evaluates every rule's condition on every dispatch. So the row previously read *Implements*, and could not be defended — the borrowing is the naming of the two halves of a rule, and nothing else. Rewriting dispatch to be incremental would be a design change, not a citation change, and this row does not presuppose one |
+| Ehrig et al. (2006) "Fundamentals of Algebraic Graph Transformation" | Implements                                                    | Graph rewriting rules, negative application conditions as a first-class `nac` field                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| Arntzenius & Krishnaswami (2016) "Datafun"                           | **Implements**                                                | Stratified groups: rules dispatched in a caller-supplied stratum order — all rules in group N complete before group N+1 begins, with context threaded between groups. A rule's stratum is a *static* property (discharged by classifying its declared produced kinds, `deriveGroup`), not a runtime probe — mirroring gen-resolve's per-equation `stratum`. (The monotone *fixpoint* reading — iterating dispatch to convergence — moved with the loop to gen-resolve.)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| Palmer et al. (2024) "Intensional Functions"                         | **Informed by**                                               | Rule identity via `mkIntensional` detection (four-predicate check: `isAttrs` + `name`/`__functor`/`closure`), dispatched on the wrapped value's identity regime. **Not "Implements", and the hedge is the point:** Palmer's Fig. 5 is a conjunction over identity AND closure, and gen-dispatch neither constructs intensional functions nor sees a closure — it consumes whatever identity a producer has stamped, and on the unmigrated regime that is still a program-point name. Theorem 1 is a preservation theorem about 𝜆ITS reduction and its soundness does not transfer. What gen-dispatch owns is the **refusal**: where no identity can be minted the rule gets none, rather than a name standing in for one                                                                                                                                                                                                                                                                                                 |
+| Hedin & Magnusson (2003) "JastAdd"                                   | Informed by                                                   | Open action types with framework-owned dispatch; aspect-oriented modular attribution                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| Batory (2005) "AHEAD"                                                | Informed by                                                   | Feature composition model inspires the `restrict`/`override`/`chain` rule combinators                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| Berry & Boudol (1990) "Chemical Abstract Machine"                    | Informed by                                                   | Rules as reactions producing transformations; multiset rewriting as a dispatch metaphor                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 
 ## License
 
